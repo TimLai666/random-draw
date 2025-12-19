@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Loader2, Download, Play } from "lucide-react";
 
 function App() {
-    const [resultText, setResultText] = useState("請選擇 Excel 檔案並設定抽樣參數");
+    const [resultText, setResultText] = useState("請選擇 Excel 或 CSV 檔案並設定抽樣參數");
     const [excelFile, setExcelFile] = useState<File | null>(null);
     const [samplingType, setSamplingType] = useState<'number' | 'percentage'>('number');
     const [samplingValue, setSamplingValue] = useState('');
@@ -49,7 +49,7 @@ function App() {
     const performSampling = async () => {
         console.log("開始抽樣流程...");
         if (!excelFile) {
-            setResultText("請選擇一個Excel文件");
+            setResultText("請選擇一個 Excel 或 CSV 檔案");
             return;
         }
         if (!samplingValue) {
@@ -79,7 +79,7 @@ function App() {
             });
 
             console.log("檔案讀取完成，調用後端 PerformSampling...");
-            const result = await PerformSampling(base64Data, hasHeader, samplingType, parseFloat(samplingValue));
+            const result = await PerformSampling(base64Data, excelFile.name, hasHeader, samplingType, parseFloat(samplingValue));
             console.log("後端返回原始結果:", result);
             
             let data: any[][] | null = null;
@@ -132,8 +132,8 @@ function App() {
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">選擇 Excel 檔案</label>
-                            <Input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+                            <label className="text-sm font-medium">選擇 Excel 或 CSV 檔案</label>
+                            <Input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} />
                         </div>
                         <div className="flex items-end space-x-2 pb-2">
                             <Checkbox id="hasHeader" checked={hasHeader} onCheckedChange={(checked) => setHasHeader(!!checked)} />

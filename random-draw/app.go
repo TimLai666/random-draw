@@ -34,42 +34,52 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// PerformSampling performs random sampling on Excel data
-func (a *App) PerformSampling(fileData string, hasHeader bool, samplingType string, value float64) *SamplingResult {
-	fmt.Printf("Backend received: hasHeader=%v, samplingType=%s, value=%f\n", hasHeader, samplingType, value)
+// PerformSampling performs random sampling on Excel or CSV data
+func (a *App) PerformSampling(fileData string, fileName string, hasHeader bool, samplingType string, value float64) *SamplingResult {
+	fmt.Printf("Backend received: fileName=%s, hasHeader=%v, samplingType=%s, value=%f\n", fileName, hasHeader, samplingType, value)
 	// Decode base64 file data
 	data, err := base64.StdEncoding.DecodeString(fileData)
 	if err != nil {
 		return &SamplingResult{Error: fmt.Sprintf("Error decoding file: %v", err)}
 	}
 
-	// Create temp Excel file
-	tempExcel, err := os.CreateTemp("", "input_*.xlsx")
-	if err != nil {
-		return &SamplingResult{Error: fmt.Sprintf("Error creating temp file: %v", err)}
-	}
-	defer os.Remove(tempExcel.Name())
-	defer tempExcel.Close()
-
-	_, err = tempExcel.Write(data)
-	if err != nil {
-		return &SamplingResult{Error: fmt.Sprintf("Error writing temp file: %v", err)}
-	}
-	tempExcel.Close()
-
 	// temp dir
-	tempDir, err := os.MkdirTemp("", "csvxl_output")
+	tempDir, err := os.MkdirTemp("", "sampling_output")
 	if err != nil {
 		return &SamplingResult{Error: fmt.Sprintf("Error creating temp dir: %v", err)}
 	}
 	defer os.RemoveAll(tempDir)
 
-	csvxl.ExcelToCsv(tempExcel.Name(), tempDir, []string{"Sheet1"})
+	var csvPath string
+	if len(fileName) > 4 && fileName[len(fileName)-4:] == ".csv" {
+		// Handle CSV directly
+		csvPath = tempDir + "/input.csv"
+		err = os.WriteFile(csvPath, data, 0644)
+		if err != nil {
+			return &SamplingResult{Error: fmt.Sprintf("Error writing temp CSV file: %v", err)}
+		}
+	} else {
+		// Create temp Excel file
+		tempExcel, err := os.CreateTemp("", "input_*.xlsx")
+		if err != nil {
+			return &SamplingResult{Error: fmt.Sprintf("Error creating temp file: %v", err)}
+		}
+		defer os.Remove(tempExcel.Name())
 
-	csvPath := tempDir + "/Sheet1.csv"
-	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
-		fmt.Printf("Error: %s not found\n", csvPath)
-		return &SamplingResult{Error: "Error: Sheet1.csv was not created. Please ensure the Excel file has a sheet named 'Sheet1'."}
+		_, err = tempExcel.Write(data)
+		if err != nil {
+			tempExcel.Close()
+			return &SamplingResult{Error: fmt.Sprintf("Error writing temp file: %v", err)}
+		}
+		tempExcel.Close()
+
+		csvxl.ExcelToCsv(tempExcel.Name(), tempDir, []string{"Sheet1"})
+
+		csvPath = tempDir + "/Sheet1.csv"
+		if _, err := os.Stat(csvPath); os.IsNotExist(err) {
+			fmt.Printf("Error: %s not found\n", csvPath)
+			return &SamplingResult{Error: "Error: Sheet1.csv was not created. Please ensure the Excel file has a sheet named 'Sheet1'."}
+		}
 	}
 
 	dt := isr.DT.From(isr.CSV{
