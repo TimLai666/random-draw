@@ -15,6 +15,13 @@ type App struct {
 	ctx context.Context
 }
 
+// SamplingResult represents the result of the sampling process
+type SamplingResult struct {
+	Array            [][]any `json:"array"`
+	CSVContentBase64 string  `json:"csvContentBase64"`
+	Error            string  `json:"error"`
+}
+
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{}
@@ -27,38 +34,44 @@ func (a *App) startup(ctx context.Context) {
 }
 
 // PerformSampling performs random sampling on Excel data
-func (a *App) PerformSampling(fileData string, hasHeader bool, samplingType string, value float64) ([][]any, string) {
+func (a *App) PerformSampling(fileData string, hasHeader bool, samplingType string, value float64) *SamplingResult {
 	// Decode base64 file data
 	data, err := base64.StdEncoding.DecodeString(fileData)
 	if err != nil {
-		return nil, fmt.Sprintf("Error decoding file: %v", err)
+		return &SamplingResult{Error: fmt.Sprintf("Error decoding file: %v", err)}
 	}
 
 	// Create temp Excel file
 	tempExcel, err := os.CreateTemp("", "input_*.xlsx")
 	if err != nil {
-		return nil, fmt.Sprintf("Error creating temp file: %v", err)
+		return &SamplingResult{Error: fmt.Sprintf("Error creating temp file: %v", err)}
 	}
 	defer os.Remove(tempExcel.Name())
 	defer tempExcel.Close()
 
 	_, err = tempExcel.Write(data)
 	if err != nil {
-		return nil, fmt.Sprintf("Error writing temp file: %v", err)
+		return &SamplingResult{Error: fmt.Sprintf("Error writing temp file: %v", err)}
 	}
 	tempExcel.Close()
 
 	// temp dir
 	tempDir, err := os.MkdirTemp("", "csvxl_output")
 	if err != nil {
-		return nil, fmt.Sprintf("Error creating temp dir: %v", err)
+		return &SamplingResult{Error: fmt.Sprintf("Error creating temp dir: %v", err)}
 	}
 	defer os.RemoveAll(tempDir)
 
 	csvxl.ExcelToCsv(tempExcel.Name(), tempDir, []string{"Sheet1"})
 
+	csvPath := tempDir + "/Sheet1.csv"
+	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
+		fmt.Printf("Error: %s not found\n", csvPath)
+		return &SamplingResult{Error: "Error: Sheet1.csv was not created. Please ensure the Excel file has a sheet named 'Sheet1'."}
+	}
+
 	dt := isr.DT.From(isr.CSV{
-		FilePath: tempDir + "/Sheet1.csv",
+		FilePath: csvPath,
 		InputOpts: isr.CSV_inOpts{
 			FirstRow2ColNames: hasHeader,
 			FirstCol2RowNames: false,
@@ -70,5 +83,25 @@ func (a *App) PerformSampling(fileData string, hasHeader bool, samplingType stri
 		numRows, _ := dt.Size()
 		num = float64(numRows) * (value / 100)
 	}
-	return dt.SimpleRandomSample(int(num)).To2DSlice(), ""
+
+	sampled := dt.SimpleRandomSample(int(num))
+	outputCSVPath := tempDir + "/sampled.csv"
+	if err := sampled.ToCSV(outputCSVPath,
+		false, hasHeader, true); err != nil {
+		return &SamplingResult{Error: fmt.Sprintf("Error writing sampled CSV: %v", err)}
+	}
+
+	slice := sampled.To2DSlice()
+
+	csvContent, err := os.ReadFile(outputCSVPath)
+	if err != nil {
+		return &SamplingResult{Error: fmt.Sprintf("Error reading CSV: %v", err)}
+	}
+
+	fmt.Println("Backend finished")
+	return &SamplingResult{
+		Array:            slice,
+		CSVContentBase64: base64.StdEncoding.EncodeToString(csvContent),
+		Error:            "",
+	}
 }
