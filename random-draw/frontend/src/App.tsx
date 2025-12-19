@@ -2,6 +2,13 @@ import {useState} from 'react';
 import logo from './assets/images/logo-universal.png';
 import './App.css';
 import {PerformSampling} from "../wailsjs/go/main/App";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2, Download, Play } from "lucide-react";
 
 function App() {
     const [resultText, setResultText] = useState("請選擇 Excel 檔案並設定抽樣參數");
@@ -19,14 +26,6 @@ function App() {
         }
     };
 
-    const handleSamplingTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSamplingType(e.target.value as 'number' | 'percentage');
-    };
-
-    const handleHasHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setHasHeader(e.target.checked);
-    };
-
     const handleSamplingValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSamplingValue(e.target.value);
     };
@@ -37,7 +36,11 @@ function App() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'sampled.csv';
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        const timeStr = now.getHours().toString().padStart(2, '0') + 
+                        now.getMinutes().toString().padStart(2, '0');
+        a.download = `sampled_${dateStr}_${timeStr}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -112,47 +115,94 @@ function App() {
     };
 
     return (
-        <div id="App">
-            <img src={logo} id="logo" alt="logo"/>
-            <div id="result" className="result">{resultText}</div>
-            <div className="upload-section">
-                <label htmlFor="excel-upload">選擇Excel文件:</label>
-                <input id="excel-upload" type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
-                <label>
-                    <input type="checkbox" checked={hasHeader} onChange={handleHasHeaderChange} />
-                    第一行是標題
-                </label>
-            </div>
-            <div className="sampling-section">
-                <label htmlFor="sampling-type">抽樣類型:</label>
-                <select id="sampling-type" value={samplingType} onChange={handleSamplingTypeChange}>
-                    <option value="number">數量</option>
-                    <option value="percentage">百分比</option>
-                </select>
-                <label htmlFor="sampling-value">值:</label>
-                <input id="sampling-value" type="number" value={samplingValue} onChange={handleSamplingValueChange} />
-                <button className="btn" onClick={performSampling} disabled={loading}>
-                    {loading && <div className="spinner"></div>}
-                    {loading ? '抽樣中...' : '開始抽樣'}
-                </button>
-            </div>
+        <div className="container mx-auto p-8 max-w-4xl">
+            <Card className="mb-8">
+                <CardHeader className="text-center">
+                    <img src={logo} className="w-32 h-32 mx-auto mb-4" alt="logo"/>
+                    <CardTitle className="text-3xl font-bold">隨機抽樣工具</CardTitle>
+                    <CardDescription className={resultText.includes("錯誤") ? "text-destructive" : "text-primary"}>
+                        {resultText}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">選擇 Excel 檔案</label>
+                            <Input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+                        </div>
+                        <div className="flex items-end space-x-2 pb-2">
+                            <Checkbox id="hasHeader" checked={hasHeader} onCheckedChange={(checked) => setHasHeader(!!checked)} />
+                            <label htmlFor="hasHeader" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                第一行是標題
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">抽樣類型</label>
+                            <Select value={samplingType} onValueChange={(v: any) => setSamplingType(v)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="選擇類型" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="number">數量</SelectItem>
+                                    <SelectItem value="percentage">百分比</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">抽樣值 ({samplingType === 'percentage' ? '%' : '筆'})</label>
+                            <Input type="number" value={samplingValue} onChange={handleSamplingValueChange} placeholder="輸入數值" />
+                        </div>
+                        <Button className="w-full" onClick={performSampling} disabled={loading}>
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                            {loading ? '抽樣中...' : '開始抽樣'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
             {sampledData && (
-                <div className="result-section">
-                    <h3>抽樣結果</h3>
-                    <table>
-                        <tbody>
-                            {sampledData.slice(0, 10).map((row, index) => (
-                                <tr key={index}>
-                                    {row.map((cell, cellIndex) => (
-                                        <td key={cellIndex}>{cell}</td>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle>抽樣結果預覽</CardTitle>
+                            <CardDescription>顯示前 10 筆數據</CardDescription>
+                        </div>
+                        <Button variant="outline" onClick={downloadCSV}>
+                            <Download className="mr-2 h-4 w-4" />
+                            下載完整 CSV
+                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        {sampledData[0]?.map((_, i) => (
+                                            <TableHead key={i}>欄位 {i + 1}</TableHead>
+                                        ))}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {sampledData.slice(0, 10).map((row, index) => (
+                                        <TableRow key={index}>
+                                            {row.map((cell, cellIndex) => (
+                                                <TableCell key={cellIndex}>{cell}</TableCell>
+                                            ))}
+                                        </TableRow>
                                     ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {sampledData.length > 10 && <p>... 還有 {sampledData.length - 10} 行</p>}
-                    <button className="btn" onClick={downloadCSV}>下載CSV</button>
-                </div>
+                                </TableBody>
+                            </Table>
+                        </div>
+                        {sampledData.length > 10 && (
+                            <p className="text-sm text-muted-foreground mt-4 text-center">
+                                ... 還有 {sampledData.length - 10} 行數據未顯示
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
             )}
         </div>
     )
