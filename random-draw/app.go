@@ -17,9 +17,10 @@ type App struct {
 
 // SamplingResult represents the result of the sampling process
 type SamplingResult struct {
-	Array            [][]any `json:"array"`
-	CSVContentBase64 string  `json:"csvContentBase64"`
-	Error            string  `json:"error"`
+	Array            [][]any  `json:"array"`
+	Headers          []string `json:"headers"`
+	CSVContentBase64 string   `json:"csvContentBase64"`
+	Error            string   `json:"error"`
 }
 
 // NewApp creates a new App application struct
@@ -35,6 +36,7 @@ func (a *App) startup(ctx context.Context) {
 
 // PerformSampling performs random sampling on Excel data
 func (a *App) PerformSampling(fileData string, hasHeader bool, samplingType string, value float64) *SamplingResult {
+	fmt.Printf("Backend received: hasHeader=%v, samplingType=%s, value=%f\n", hasHeader, samplingType, value)
 	// Decode base64 file data
 	data, err := base64.StdEncoding.DecodeString(fileData)
 	if err != nil {
@@ -100,8 +102,7 @@ func (a *App) PerformSampling(fileData string, hasHeader bool, samplingType stri
 
 	fmt.Println("Backend finished")
 	return &SamplingResult{
-		Array:            slice,
-		CSVContentBase64: base64.StdEncoding.EncodeToString(csvContent),
-		Error:            "",
+		Array: slice, Headers: sampled.ColNames(), CSVContentBase64: base64.StdEncoding.EncodeToString(csvContent),
+		Error: "",
 	}
 }

@@ -19,6 +19,7 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [sampledCSV, setSampledCSV] = useState<string | null>(null);
     const [sampledData, setSampledData] = useState<string[][] | null>(null);
+    const [headers, setHeaders] = useState<string[] | null>(null);
    
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -58,6 +59,7 @@ function App() {
 
         setLoading(true);
         setSampledData(null);
+        setHeaders(null);
         setSampledCSV(null);
         setResultText("正在讀取檔案並進行抽樣...");
 
@@ -83,12 +85,14 @@ function App() {
             let data: any[][] | null = null;
             let csvBase64 = "";
             let errMsg = "";
+            let resHeaders: string[] = [];
 
             if (result && typeof result === 'object' && !Array.isArray(result)) {
                 // 處理結構體返回
                 data = (result as any).array;
                 csvBase64 = (result as any).csvContentBase64;
                 errMsg = (result as any).error;
+                resHeaders = (result as any).headers || [];
             } else if (Array.isArray(result)) {
                 // 處理舊版或陣列返回
                 [data, csvBase64, errMsg] = result;
@@ -101,6 +105,7 @@ function App() {
             } else if (data) {
                 setSampledCSV(csvBase64);
                 setSampledData(data as string[][]);
+                setHeaders(resHeaders);
                 setResultText(`抽樣完成，共 ${data.length} 行數據`);
             } else {
                 setResultText("抽樣完成，但未獲取到數據");
@@ -180,9 +185,15 @@ function App() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        {sampledData[0]?.map((_, i) => (
-                                            <TableHead key={i}>欄位 {i + 1}</TableHead>
-                                        ))}
+                                        {headers && headers.length > 0 ? (
+                                            headers.map((header, index) => (
+                                                <TableHead key={index}>{header}</TableHead>
+                                            ))
+                                        ) : (
+                                            sampledData[0]?.map((_, index) => (
+                                                <TableHead key={index}>欄位 {index + 1}</TableHead>
+                                            ))
+                                        )}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
