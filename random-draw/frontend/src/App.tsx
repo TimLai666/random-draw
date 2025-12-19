@@ -1,12 +1,12 @@
 import {useState} from 'react';
-import logo from './assets/images/logo-universal.png';
+import logo from './assets/images/logo.png';
 import './App.css';
 import {PerformSampling} from "../wailsjs/go/main/App";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription,  CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Download, Play } from "lucide-react";
 
