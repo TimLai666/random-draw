@@ -28,7 +28,29 @@ function App() {
     };
 
     const handleSamplingValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSamplingValue(e.target.value);
+        const value = e.target.value;
+        if (samplingType === 'number') {
+            if (/^\d*$/.test(value)) {
+                setSamplingValue(value);
+            } else {
+                setSamplingValue("");
+            }
+        } else if (samplingType === 'percentage') {
+            if (/^\d*(\.\d+)?$/.test(value)) {
+                setSamplingValue(value);
+            } else {
+                setSamplingValue("");
+            }
+        }
+    };
+
+    const handleSamplingTypeChange = (v: 'number' | 'percentage') => {
+        setSamplingType(v);
+        if (v === 'number' && !/^\d*$/.test(samplingValue)) {
+            setSamplingValue("");
+        } else if (v === 'percentage' && !/^\d*(\.\d+)?$/.test(samplingValue)) {
+            setSamplingValue("");
+        }
     };
 
     const downloadCSV = () => {
@@ -106,7 +128,7 @@ function App() {
                 setSampledCSV(csvBase64);
                 setSampledData(data as string[][]);
                 setHeaders(resHeaders);
-                setResultText(`抽樣完成，共 ${data.length} 行數據`);
+                setResultText(`抽樣完成，共 ${data.length} 筆資料`);
             } else {
                 setResultText("抽樣完成，但未獲取到數據");
             }
@@ -146,7 +168,7 @@ function App() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                         <div className="space-y-2">
                             <label className="text-sm font-medium">抽樣類型</label>
-                            <Select value={samplingType} onValueChange={(v: any) => setSamplingType(v)}>
+                            <Select value={samplingType} onValueChange={(v: any) => handleSamplingTypeChange(v)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="選擇類型" />
                                 </SelectTrigger>
@@ -158,7 +180,12 @@ function App() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium">抽樣值 ({samplingType === 'percentage' ? '%' : '筆'})</label>
-                            <Input type="number" value={samplingValue} onChange={handleSamplingValueChange} placeholder="輸入數值" />
+                            <Input 
+                                type="number" 
+                                value={samplingValue} 
+                                onChange={handleSamplingValueChange} 
+                                placeholder={samplingType === 'number' ? "輸入整數數值" : "輸入百分比 (可含小數)"} 
+                            />
                         </div>
                         <Button className="w-full" onClick={performSampling} disabled={loading}>
                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}

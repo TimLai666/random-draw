@@ -94,6 +94,10 @@ func (a *App) PerformSampling(fileData string, fileName string, hasHeader bool, 
 	if samplingType == "percentage" {
 		numRows, _ := dt.Size()
 		num = float64(numRows) * (value / 100)
+		// 如果是小數，則向上取整
+		if num != float64(int(num)) {
+			num = float64(int(num) + 1)
+		}
 	}
 
 	sampled := dt.SimpleRandomSample(int(num))
