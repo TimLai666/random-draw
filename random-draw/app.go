@@ -73,7 +73,10 @@ func (a *App) PerformSampling(fileData string, fileName string, hasHeader bool, 
 		}
 		tempExcel.Close()
 
-		csvxl.ExcelToCsv(tempExcel.Name(), tempDir, []string{"Sheet1"})
+		err = csvxl.ExcelToCsv(tempExcel.Name(), tempDir, []string{"Sheet1"})
+		if err != nil {
+			return &SamplingResult{Error: fmt.Sprintf("Error converting Excel to CSV: %v", err)}
+		}
 
 		csvPath = tempDir + "/Sheet1.csv"
 		if _, err := os.Stat(csvPath); os.IsNotExist(err) {
